@@ -46,11 +46,11 @@ void setup() {
 
 void loop() {
   server.handleClient();
-
   int Value = digitalRead(12);
   digitalWrite(13, !Value);
   unsigned long currentTime = millis();
- if (old_value < Value) {
+  // if (digitalRead(13) == 1){
+if (old_value < Value) {
   old_value = Value;
   puffID++;
 
@@ -67,14 +67,18 @@ void loop() {
   else if (old_value > Value) {
     old_value = Value;
   }
+  // }
 }
 
 void handleDeviceID() {
   StaticJsonDocument<256> jsonDoc;
-  jsonDoc["deviceID"] = deviceID;
+  JsonArray jsonArray = jsonDoc.to<JsonArray>();
+  
+  JsonObject jsonObject = jsonArray.createNestedObject();
+  jsonObject["deviceid"] = deviceID;
 
   String jsonResponse;
-  serializeJson(jsonDoc, jsonResponse);
+  serializeJson(jsonArray, jsonResponse);
 
   server.send(200, "application/json", jsonResponse);
 }
