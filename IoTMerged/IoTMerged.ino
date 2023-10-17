@@ -8,7 +8,7 @@
 const char* softAPSSID = "ESP32_SoftAP";
 const char* softAPPassword = "password";
 const char* deviceID = "puffer_322614";
-const char* dbserver = "https://back-end-macro.up.railway.app";
+const char* dbserver = "https://back-end-macro-production.up.railway.app";
 
 int old_value = 0;
 int puffID = 0;
@@ -108,7 +108,7 @@ void handleConfigWiFi() {
 void postData(int puffID, unsigned long dateTime, int kambuhID) {
     HTTPClient http;
 
-    http.begin(String(dbserver) + "/kambuh/post-data"); 
+    http.begin(String(dbserver) + "/data/puff"); 
     http.addHeader("Content-Type", "application/json");
 
     String jsonData = "{\"puff_id\":" + String(puffID) + ",\"date_time\":" + String(dateTime) + ",\"kambuhh_id\":" + String(kambuhID) + "}";
