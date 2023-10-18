@@ -39,7 +39,7 @@ void setup() {
 
   // Langkah 3: Mengatur rute HTTP untuk menerima data SSID dan password
   server.on("/config-wifi", HTTP_POST, handleConfigWiFi);
-   server.on("/device-id", HTTP_GET, handleDeviceID);
+  server.on("/device-id", HTTP_GET, handleDeviceID);
 
   server.begin();
 }
@@ -49,7 +49,6 @@ void loop() {
   int Value = digitalRead(12);
   digitalWrite(13, !Value);
   unsigned long currentTime = millis();
-  // if (digitalRead(13) == 1){
 if (old_value < Value) {
   old_value = Value;
   puffID++;
@@ -67,7 +66,6 @@ if (old_value < Value) {
   else if (old_value > Value) {
     old_value = Value;
   }
-  // }
 }
 
 void handleDeviceID() {
@@ -91,23 +89,36 @@ void handleConfigWiFi() {
   const char* receivedSSID = doc["ssid"];
   const char* receivedPassword = doc["password"];
   Serial.println(receivedSSID);
-
   Serial.println(receivedPassword);
 
   WiFi.disconnect(true);
   delay(1000);
   WiFi.begin(receivedSSID, receivedPassword);
-  while (WiFi.status() != WL_CONNECTED) {
-      delay(1000);
-      Serial.println("Mencoba menghubungkan ke WiFi...");
+
+  unsigned long startTime = millis();
+  bool connected = false;
+
+  while (millis() - startTime <= 10000) {
+    if (WiFi.status() == WL_CONNECTED) {
+      connected = true;
+      break;
     }
+    delay(1000);
+    Serial.println("Mencoba menghubungkan ke WiFi...");
+  }
+
+  if (connected) {
     Serial.println("Terhubung ke WiFi dengan sukses.");
     WiFi.softAPdisconnect(true);
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-
-  server.send(200, "text/plain", "Konfigurasi WiFi berhasil diterima.");
+    server.send(200, "text/plain", "Konfigurasi WiFi berhasil diterima.");
+  } else {
+    Serial.println("WiFi Failed to Connect");
+    server.send(404, "text/plain", "WiFi Failed to Connect. Please provide valid SSID and password.");
+  }
 }
+
 
 void postData(int puffID, unsigned long dateTime, int kambuhID) {
     HTTPClient http;
