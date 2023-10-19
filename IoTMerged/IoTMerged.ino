@@ -109,10 +109,10 @@ void handleConfigWiFi() {
 
   if (connected) {
     Serial.println("Terhubung ke WiFi dengan sukses.");
-    WiFi.softAPdisconnect(true);
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
     server.send(200, "text/plain", "Konfigurasi WiFi berhasil diterima.");
+     WiFi.softAPdisconnect(true);
   } else {
     Serial.println("WiFi Failed to Connect");
     server.send(404, "text/plain", "WiFi Failed to Connect. Please provide valid SSID and password.");
