@@ -88,6 +88,12 @@ void handleConfigWiFi() {
 
   const char* receivedSSID = doc["ssid"];
   const char* receivedPassword = doc["password"];
+  
+  if (!receivedSSID || !receivedPassword) {
+    sendJSONResponse(400, "Both SSID and password are required.");
+    return;
+  }
+  
   Serial.println(receivedSSID);
   Serial.println(receivedPassword);
 
@@ -109,16 +115,26 @@ void handleConfigWiFi() {
 
   if (connected) {
     Serial.println("Terhubung ke WiFi dengan sukses.");
+    sendJSONResponse(200, "Wifi configuration updated successfully.");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-    server.send(200, "text/plain", "Konfigurasi WiFi berhasil diterima.");
-     WiFi.softAPdisconnect(true);
+    delay(1000);
+    WiFi.softAPdisconnect(true);
   } else {
     Serial.println("WiFi Failed to Connect");
-    server.send(404, "text/plain", "WiFi Failed to Connect. Please provide valid SSID and password.");
+    sendJSONResponse(400, "WiFi Failed to Connect.");
   }
 }
 
+void sendJSONResponse(int statusCode, const char* message) {
+  StaticJsonDocument<256> jsonDoc;
+  JsonArray jsonArray = jsonDoc.to<JsonArray>();
+  JsonObject jsonObject = jsonArray.createNestedObject();
+  jsonObject["message"] = message;
+  String jsonResponse;
+  serializeJson(jsonArray, jsonResponse);
+  server.send(statusCode, "application/json", jsonResponse);
+}
 
 void postData(int puffID, unsigned long dateTime, int kambuhID) {
     HTTPClient http;
@@ -126,7 +142,7 @@ void postData(int puffID, unsigned long dateTime, int kambuhID) {
     http.begin(String(dbserver) + "/data/puff"); 
     http.addHeader("Content-Type", "application/json");
 
-    String jsonData = "{\"puff_id\":" + String(puffID) + ",\"date_time\":" + String(dateTime) + ",\"kambuhh_id\":" + String(kambuhID) + "}";
+    String jsonData = "{}";
 
     int httpResponseCode = http.POST(jsonData);
 
