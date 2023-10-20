@@ -70,16 +70,16 @@ if (old_value < Value) {
 
 void handleDeviceID() {
   StaticJsonDocument<256> jsonDoc;
-  JsonArray jsonArray = jsonDoc.to<JsonArray>();
+  JsonObject jsonObject = jsonDoc.to<JsonObject>();
   
-  JsonObject jsonObject = jsonArray.createNestedObject();
   jsonObject["deviceid"] = deviceID;
 
   String jsonResponse;
-  serializeJson(jsonArray, jsonResponse);
+  serializeJson(jsonObject, jsonResponse);
 
   server.send(200, "application/json", jsonResponse);
 }
+
 
 void handleConfigWiFi() {
   String jsonBody = server.arg("plain");
@@ -128,13 +128,13 @@ void handleConfigWiFi() {
 
 void sendJSONResponse(int statusCode, const char* message) {
   StaticJsonDocument<256> jsonDoc;
-  JsonArray jsonArray = jsonDoc.to<JsonArray>();
-  JsonObject jsonObject = jsonArray.createNestedObject();
+  JsonObject jsonObject = jsonDoc.to<JsonObject>();
   jsonObject["message"] = message;
   String jsonResponse;
-  serializeJson(jsonArray, jsonResponse);
+  serializeJson(jsonObject, jsonResponse);
   server.send(statusCode, "application/json", jsonResponse);
 }
+
 
 void postData(int puffID, unsigned long dateTime, int kambuhID) {
     HTTPClient http;
@@ -142,7 +142,12 @@ void postData(int puffID, unsigned long dateTime, int kambuhID) {
     http.begin(String(dbserver) + "/data/puff"); 
     http.addHeader("Content-Type", "application/json");
 
-    String jsonData = "{}";
+    StaticJsonDocument<256> jsonDoc;
+    JsonObject jsonObject = jsonDoc.to<JsonObject>();
+    jsonObject["device-id"] = deviceID;
+
+    String jsonData;
+    serializeJson(jsonObject, jsonData);
 
     int httpResponseCode = http.POST(jsonData);
 
@@ -157,3 +162,4 @@ void postData(int puffID, unsigned long dateTime, int kambuhID) {
 
     http.end();
 }
+
