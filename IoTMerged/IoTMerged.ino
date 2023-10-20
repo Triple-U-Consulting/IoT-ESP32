@@ -7,7 +7,7 @@
 
 const char* softAPSSID = "ESP32_SoftAP";
 const char* softAPPassword = "password";
-const char* deviceID = "puffer_322614";
+const char* deviceID = "inhaler_1";
 const char* dbserver = "https://back-end-macro-production.up.railway.app";
 
 int old_value = 0;
@@ -144,7 +144,7 @@ void postData(int puffID, unsigned long dateTime, int kambuhID) {
 
     StaticJsonDocument<256> jsonDoc;
     JsonObject jsonObject = jsonDoc.to<JsonObject>();
-    jsonObject["device-id"] = deviceID;
+    jsonObject["inhaler_id"] = deviceID;
 
     String jsonData;
     serializeJson(jsonObject, jsonData);
