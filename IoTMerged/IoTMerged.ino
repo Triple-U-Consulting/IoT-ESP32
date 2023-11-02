@@ -10,6 +10,8 @@ const char* softAPPassword = "password";
 const char* deviceID = "inhaler_1";
 const char* dbserver = "https://back-end-macro-production.up.railway.app";
 
+const int LED_PIN = 14;
+
 int old_value = 0;
 int puffID = 0;
 unsigned long lastTapTime = 0; 
@@ -22,6 +24,7 @@ void setup() {
 
   pinMode(12, INPUT);
   pinMode(13, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);  // Inisialisasi LED pin
 
   Serial.begin(115200);
   
@@ -31,11 +34,13 @@ void setup() {
   Serial.print("Alamat IP Access Point: ");
   Serial.println(WiFi.softAPIP());
 
+  updateLEDStatus();
   // Langkah 2: Menunggu hingga perangkat lain terhubung dan mengirimkan SSID dan password
   while (WiFi.softAPgetStationNum() == 0) {
     delay(1000);
   }
-  Serial.println("Perangkat terhubung ke WiFi SoftAP");
+
+  updateLEDStatus();
 
   // Langkah 3: Mengatur rute HTTP untuk menerima data SSID dan password
   server.on("/config-wifi", HTTP_POST, handleConfigWiFi);
@@ -46,6 +51,7 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  updateLEDStatus();
   int Value = digitalRead(12);
   digitalWrite(13, !Value);
   unsigned long currentTime = millis();
@@ -115,14 +121,16 @@ void handleConfigWiFi() {
 
   if (connected) {
     Serial.println("Terhubung ke WiFi dengan sukses.");
+    digitalWrite(LED_PIN, HIGH);
     sendJSONResponse(200, "Wifi configuration updated successfully.");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
     delay(1000);
     WiFi.softAPdisconnect(true);
   } else {
+    digitalWrite(LED_PIN, LOW);
     Serial.println("WiFi Failed to Connect");
-    sendJSONResponse(400, "WiFi Failed to Connect.");
+    sendJSONResponse(200, "WiFi Failed to Connect.");
   }
 }
 
@@ -162,4 +170,13 @@ void postData(int puffID, unsigned long dateTime, int kambuhID) {
 
     http.end();
 }
+
+void updateLEDStatus() {
+  if (WiFi.softAPgetStationNum() > 0) {
+    digitalWrite(LED_PIN, HIGH);  // Menyalakan LED jika ada perangkat yang terhubung
+  } else {
+    digitalWrite(LED_PIN, LOW);   // Mematikan LED jika tidak ada perangkat yang terhubung
+  }
+}
+
 
