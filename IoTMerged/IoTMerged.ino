@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <Preferences.h>
 
 
 const char* softAPSSID = "ESP32_SoftAP";
@@ -16,38 +17,60 @@ int old_value = 0;
 int puffID = 0;
 unsigned long lastTapTime = 0; 
 int kambuhID = 0; 
+unsigned long lastReconnectAttempt = 0;
+
+
+String storedSSID = "";
+String storedPassword = "";
+
+Preferences preferences;
 
 WebServer server(80);
 
 
 void setup() {
-
   pinMode(12, INPUT);
   pinMode(13, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);  // Inisialisasi LED pin
+  pinMode(LED_PIN, OUTPUT);
 
   Serial.begin(115200);
-  
-  // Langkah 1: Membangun WiFi SoftAP
-  WiFi.softAP(softAPSSID, softAPPassword);
-  Serial.println("WiFi SoftAP terpasang");
-  Serial.print("Alamat IP Access Point: ");
-  Serial.println(WiFi.softAPIP());
 
-  updateLEDStatus();
-  // Langkah 2: Menunggu hingga perangkat lain terhubung dan mengirimkan SSID dan password
-  while (WiFi.softAPgetStationNum() == 0) {
-    delay(1000);
+  preferences.begin("WiFiCred", true);
+  storedSSID = preferences.getString("ssid", "");
+  storedPassword = preferences.getString("password", "");
+  preferences.end();
+  if (storedSSID == "" || storedPassword == "") {
+    Serial.println("No stored WiFi credentials found. Starting SoftAP for configuration.");
+    WiFi.softAP(softAPSSID, softAPPassword);
+    Serial.println("WiFi SoftAP terpasang");
+    Serial.print("Alamat IP Access Point: ");
+    Serial.println(WiFi.softAPIP());
+  } else {
+    Serial.println("Connecting to WiFi with stored credentials.");
+    WiFi.begin(storedSSID.c_str(), storedPassword.c_str());
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+      delay(500);
+      Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nConnected to WiFi.");
+      digitalWrite(LED_PIN, HIGH);
+    } else {
+      Serial.println("\nFailed to connect to WiFi. Starting SoftAP for configuration.");
+      WiFi.softAP(softAPSSID, softAPPassword);
+      Serial.print("Alamat IP Access Point: ");
+      Serial.println(WiFi.softAPIP());
+    }
   }
 
-  updateLEDStatus();
-
-  // Langkah 3: Mengatur rute HTTP untuk menerima data SSID dan password
   server.on("/config-wifi", HTTP_POST, handleConfigWiFi);
   server.on("/device-id", HTTP_GET, handleDeviceID);
-
   server.begin();
+
+  updateLEDStatus();
 }
+
 
 void loop() {
   server.handleClient();
@@ -55,6 +78,17 @@ void loop() {
   int Value = digitalRead(12);
   digitalWrite(13, !Value);
   unsigned long currentTime = millis();
+
+   if (WiFi.status() != WL_CONNECTED) {
+    unsigned long currentTime = millis();
+    if (currentTime - lastReconnectAttempt >= 5000) {
+      lastReconnectAttempt = currentTime;
+      if (reconnect()) {
+        lastReconnectAttempt = 0;
+      }
+    }
+  }
+  
 if (old_value < Value) {
   old_value = Value;
   puffID++;
@@ -121,12 +155,19 @@ void handleConfigWiFi() {
 
   if (connected) {
     Serial.println("Terhubung ke WiFi dengan sukses.");
+    storedSSID = String(receivedSSID);
+    storedPassword = String(receivedPassword);
     digitalWrite(LED_PIN, HIGH);
     sendJSONResponse(200, "Wifi configuration updated successfully.");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+     preferences.begin("WiFiCred", false);
+    preferences.putString("ssid", receivedSSID);
+    preferences.putString("password", receivedPassword);
+    preferences.end();
     delay(1000);
     WiFi.softAPdisconnect(true);
+    
   } else {
     digitalWrite(LED_PIN, LOW);
     Serial.println("WiFi Failed to Connect");
@@ -173,10 +214,23 @@ void postData(int puffID, unsigned long dateTime, int kambuhID) {
 
 void updateLEDStatus() {
   if (WiFi.softAPgetStationNum() > 0) {
-    digitalWrite(LED_PIN, HIGH);  // Menyalakan LED jika ada perangkat yang terhubung
+    digitalWrite(LED_PIN, HIGH);
   } else {
-    digitalWrite(LED_PIN, LOW);   // Mematikan LED jika tidak ada perangkat yang terhubung
+    digitalWrite(LED_PIN, LOW);
   }
 }
 
 
+bool reconnect() {
+  if (storedSSID != "" && storedPassword != "") {
+    Serial.println("Wifi disconnected. Trying to reconnect...");
+    WiFi.disconnect();
+    WiFi.begin(storedSSID.c_str(), storedPassword.c_str());
+    if (WiFi.waitForConnectResult() == WL_CONNECTED) {
+      Serial.println("Reconnected to WiFi successfully.");
+      return true;
+    }
+  }
+  Serial.println("Failed to reconnect to WiFi");
+  return false;
+}
